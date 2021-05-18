@@ -27,7 +27,7 @@ totalRevenue: public(uint256)
 totalReserves: public(uint256)
 daoFeesAccrued: public(uint256)
 feeBPS: public(uint256)
-devFeeBPS: public(uint256)
+daoFeeBPS: public(uint256)
 owner: public(address)
 swapper: public(address)
 dao: public(address)
@@ -41,10 +41,10 @@ PERMIT_TYPE_HASH: constant(bytes32) = keccak256("Permit(address owner,address sp
 firstUnstake: bool
 
 @external
-def __init__(base_token:address, fee_bps:uint256, dev_fee_bps: uint256):
+def __init__(base_token:address, fee_bps:uint256, dao_fee_bps: uint256):
     self.BASE_TOKEN = base_token
     self.feeBPS = fee_bps
-    self.devFeeBPS = dev_fee_bps
+    self.daoFeeBPS = dao_fee_bps
     self.firstUnstake = True
     self.owner = msg.sender
     self.dao = msg.sender
@@ -86,7 +86,7 @@ def _estimateFee(amount: uint256) -> uint256:
 @view
 @internal
 def _estimateDaoFee(amount: uint256) -> uint256:
-    return amount * self.devFeeBPS / 1000
+    return amount * self.daoFeeBPS / 1000
 
 
 @internal
@@ -295,6 +295,14 @@ def changeDao(dao: address) -> bool:
     # we don't want to allow wasting that
     assert dao not in [ZERO_ADDRESS, self], "Invalid address"
     self.dao = dao
+    return True
+
+
+@external
+def changeDaoFeeBPS(dao_fee_bps: uint256) -> bool:
+    assert msg.sender == self.dao, "Unauthorized"
+    assert dao_fee_bps <= 500, "Can't take more than 50 percent in fees"
+    self.daoFeeBPS = dao_fee_bps
     return True
 
 
