@@ -1,4 +1,5 @@
 # @version 0.2.12
+# WARNING: Any coins or tokens sent to this contract will be considered as incentives and distributed to stakers
 from vyper.interfaces import ERC20
 
 implements: ERC20
@@ -343,7 +344,7 @@ def sendSwapperPayment(token: address) -> bool:
 @external
 def sendDaoPayment() -> bool:
     assert self.daoFeesAccrued > 0, "No fees accrued"
-    assert self._sendBaseToken(self.dao, self.daoFeesAccrued)
+    self._sendBaseToken(self.dao, self.daoFeesAccrued)
     self.daoFeesAccrued = 0
     return True
 
