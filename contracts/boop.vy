@@ -329,9 +329,6 @@ def _sendERC20PayableToSwapper(token: address) -> bool:
         # don't need to swap, just distribute it as rewards
         self._accountRewards(amount)
         return True
-    approved: uint256 = ERC20(token).allowance(self, self)
-    if amount > approved:
-        assert ERC20(token).approve(self, MAX_UINT256), "Failure in ERC20 approve"
     assert ERC20(token).transfer(self.swapper, amount), "Failure in ERC20 transfer"
     return True
 
