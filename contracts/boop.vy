@@ -24,7 +24,9 @@ inPoolSince: public(HashMap[address, uint256])
 outstandingRewards: public(HashMap[address, uint256])
 totalRevenue: public(uint256)
 totalReserves: public(uint256)
+devFeeAccrued: public(uint256)
 feeBPS: public(uint256)
+devFeeBPS: public(uint256)
 owner: public(address)
 swapper: public(address)
 paymentsReceived: public(uint256)
@@ -37,9 +39,10 @@ PERMIT_TYPE_HASH: constant(bytes32) = keccak256("Permit(address owner,address sp
 firstUnstake: bool
 
 @external
-def __init__(base_token:address, fee_bps:uint256):
+def __init__(base_token:address, fee_bps:uint256, dev_fee_bps: uint256):
     self.BASE_TOKEN = base_token
     self.feeBPS = fee_bps
+    self.devFeeBPS = dev_fee_bps
     self.firstUnstake = True
     self.owner = msg.sender
     self.DOMAIN_SEPARATOR = keccak256(
@@ -98,7 +101,7 @@ def _burn(sender: address, amount: uint256):
 def _getUnaccountedRewards(sender: address) -> uint256:
     rewards_to_pay: uint256 = 0
     if self.totalRevenue > self.inPoolSince[sender]:
-        rewards_to_pay  = (self.totalRevenue - self.inPoolSince[sender]) \
+        rewards_to_pay  = (self.totalRevenue - self.inPoolSince[sender] - self.devFeeAccrued) \
                                 * self.boopedAmount[sender] / self.totalBooped
     return rewards_to_pay
 
@@ -193,10 +196,17 @@ def _estimateFee(amount: uint256) -> uint256:
     return amount * self.feeBPS / 1000
 
 
+@view
+@internal
+def _estimateDevFee(amount: uint256) -> uint256:
+    return amount * self.devFeeBPS / 1000
+
+
 @internal
 def _takeFeesFromAmount(amount: uint256) -> uint256:
     fee_amount: uint256 = self._estimateFee(amount)
     self.totalRevenue += fee_amount
+    self.devFeeAccrued += self._estimateDevFee(fee_amount)
     return amount - fee_amount
 
 

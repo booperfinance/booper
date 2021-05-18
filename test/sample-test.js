@@ -8,7 +8,8 @@ describe("Booper construction", function() {
     const idex = await Idex.deploy("Idex", "IDEX", 18, BigNumber.from(10).pow(9));
     const Booper = await hre.ethers.getContractFactory("boop");
     const feeBPS = 10;
-    const booper = await Booper.deploy(idex.address, feeBPS);
+    const devFeeBPS = 10;
+    const booper = await Booper.deploy(idex.address, feeBPS, devFeeBPS);
     await booper.deployed();
     const [owner, addr1, addr2] = await ethers.getSigners();
 
@@ -26,7 +27,8 @@ describe("Booper mint/unmint", function() {
     const [owner, addr1, addr2] = await ethers.getSigners();
     const Booper = await hre.ethers.getContractFactory("boop");
     const feeBPS = 10;
-    const booper = await Booper.deploy(idex.address, feeBPS);
+    const devFeeBPS = 10;
+    const booper = await Booper.deploy(idex.address, feeBPS, devFeeBPS);
 
     const amount = BigNumber.from(10).pow(18);
 
@@ -58,7 +60,8 @@ describe("Booper mint/unmint", function() {
     const [owner, addr1, addr2] = await ethers.getSigners();
     const Booper = await hre.ethers.getContractFactory("boop");
     const feeBPS = 10;
-    const booper = await Booper.deploy(idex.address, feeBPS);
+    const devFeeBPS = 10;
+    const booper = await Booper.deploy(idex.address, feeBPS, devFeeBPS);
   
     const amount = BigNumber.from(10).pow(18);
   
@@ -96,7 +99,8 @@ describe("Booper transfer", function() {
     const [owner, addr1, addr2] = await ethers.getSigners();
     const Booper = await hre.ethers.getContractFactory("boop");
     const feeBPS = 10;
-    const booper = await Booper.deploy(idex.address, feeBPS);
+    const devFeeBPS = 10;
+    const booper = await Booper.deploy(idex.address, feeBPS, devFeeBPS);
   
     const amount = BigNumber.from(10).pow(18);
   
@@ -146,13 +150,14 @@ describe("Booper fee calculations", function() {
     const [owner, addr1, addr2] = await ethers.getSigners();
     const Booper = await hre.ethers.getContractFactory("boop");
     const feeBPS = 10;
-    const booper = await Booper.deploy(idex.address, feeBPS);
+    const devFeeBPS = 10;
+    const booper = await Booper.deploy(idex.address, feeBPS, devFeeBPS);
   
     const amount = BigNumber.from(10).pow(18);
   
     await booper.deployed();
 
-    before = await idex.balanceOf(owner.address);
+    const before = await idex.balanceOf(owner.address);
 
     const MAX_UINT256 = BigNumber.from(2).pow(256).sub(1);
     await idex.approve(booper.address, MAX_UINT256);
@@ -163,19 +168,27 @@ describe("Booper fee calculations", function() {
     expect(await idex.balanceOf(booper.address)).to.equal(amount);
 
     const fees = amount.mul(feeBPS).div(1000);
-    const fees_after_unboop = fees.add(fees.mul(feeBPS).div(1000));
+    const dev_share = fees.mul(devFeeBPS).div(1000);
     await booper.unboop(amount);
     expect(await booper.totalRevenue()).to.equal(fees);
+    expect(await booper.devFeeAccrued()).to.equal(dev_share);
     expect(await idex.balanceOf(booper.address)).to.equal(fees);
     expect(await idex.balanceOf(owner.address)).to.equal(before.sub(fees));
 
     await booper.boop(amount);
     expect(await booper.totalRevenue()).to.equal(fees);
+    expect(await booper.devFeeAccrued()).to.equal(dev_share);
     expect(await idex.balanceOf(booper.address)).to.equal(amount.add(fees));
 
+    const paid_fee = fees.sub(dev_share.mul(2));
+    const dev_share_2 = paid_fee.mul(devFeeBPS).div(1000);
+    const new_fees = fees.add(fees).add(dev_share_2);
+    const dev_share_final = new_fees.mul(devFeeBPS).div(1000);
+
     await booper.unboop(amount);
-    expect(await booper.totalRevenue()).to.equal(fees.add(fees_after_unboop));
-    expect(await idex.balanceOf(booper.address)).to.equal(fees_after_unboop);
-    expect(await idex.balanceOf(owner.address)).to.equal(before.sub(fees_after_unboop));
+    expect(await booper.totalRevenue()).to.equal(new_fees);
+    expect(await booper.devFeeAccrued()).to.equal(dev_share_final);
+    expect(await idex.balanceOf(booper.address)).to.equal(new_fees.sub(paid_fee));
+    expect(await idex.balanceOf(owner.address)).to.equal(before.sub(new_fees).add(paid_fee));
   });
 });
