@@ -29,6 +29,7 @@ feeBPS: public(uint256)
 devFeeBPS: public(uint256)
 owner: public(address)
 swapper: public(address)
+dao: public(address)
 paymentsReceived: public(uint256)
 nonces: public(HashMap[address, uint256])
 DOMAIN_SEPARATOR: public(bytes32)
@@ -45,6 +46,7 @@ def __init__(base_token:address, fee_bps:uint256, dev_fee_bps: uint256):
     self.devFeeBPS = dev_fee_bps
     self.firstUnstake = True
     self.owner = msg.sender
+    self.dao = msg.sender
     self.DOMAIN_SEPARATOR = keccak256(
         concat(
             DOMAIN_TYPE_HASH,
@@ -72,6 +74,18 @@ def symbol() -> String[5]:
 @external
 def decimals() -> uint256:
     return 12
+
+
+@view
+@internal
+def _estimateFee(amount: uint256) -> uint256:
+    return amount * self.feeBPS / 1000
+
+
+@view
+@internal
+def _estimateDaoFee(amount: uint256) -> uint256:
+    return amount * self.devFeeBPS / 1000
 
 
 @internal
@@ -144,9 +158,15 @@ def _reduceStake(sender: address):
         self.boopedAmount[sender] = self.balanceOf[sender]
 
 @internal
+def _accountRewards(amount: uint256):
+    self.totalRevenue += amount
+    self.daoFeesAccrued += self._estimateDaoFee(amount)
+
+
+@internal
 def _addToRewards(sender: address, amount: uint256) -> bool:
     assert ERC20(self.BASE_TOKEN).transfer(self, amount), "Failure in ERC20 transfer"
-    self.totalRevenue += amount
+    self._accountRewards(amount)
     return True
 
 
@@ -190,28 +210,16 @@ def _boop(sender: address, amount: uint256) -> bool:
     self.totalReserves += mint_amount
     return True
 
-@view
-@internal
-def _estimateFee(amount: uint256) -> uint256:
-    return amount * self.feeBPS / 1000
-
-
-@view
-@internal
-def _estimateDaoFee(amount: uint256) -> uint256:
-    return amount * self.devFeeBPS / 1000
-
 
 @internal
 def _takeFeesFromAmount(amount: uint256) -> uint256:
     fee_amount: uint256 = self._estimateFee(amount)
-    self.totalRevenue += fee_amount
-    self.daoFeesAccrued += self._estimateDaoFee(fee_amount)
+    self._accountRewards(fee_amount)
     return amount - fee_amount
 
 
 @internal
-def _returnBaseToken(receiver: address, amount: uint256) -> bool:
+def _sendBaseToken(receiver: address, amount: uint256) -> bool:
     self.totalReserves -= amount
     assert ERC20(self.BASE_TOKEN).transfer(receiver, amount), "Failure in ERC20 transfer"
     return True
@@ -224,7 +232,7 @@ def _claim(sender: address) -> bool:
     if rewards_to_pay > 0:
         self._resetRewards(sender)
         final_amount: uint256 = self._takeFeesFromAmount(rewards_to_pay)
-        self._returnBaseToken(sender, final_amount)
+        self._sendBaseToken(sender, final_amount)
     return True
 
 
@@ -235,7 +243,7 @@ def _unboop(sender: address, amount: uint256) -> bool:
 
     self._claim(sender)
     self._burn(sender, burn_amount)
-    self._returnBaseToken(sender, final_amount)
+    self._sendBaseToken(sender, final_amount)
     return True
 
 
@@ -264,16 +272,28 @@ def addToRewards(amount: uint256) -> bool:
 
 @external
 def setSwapperContract(swapper: address) -> bool:
-    assert swapper not in [ZERO_ADDRESS, self], "Invalid destination"
+    assert swapper not in [ZERO_ADDRESS, self], "Invalid address"
     assert msg.sender == self.owner, "Unauthorized"
     self.swapper = swapper
     return True
 
 
 @external
-def destroyOwner() -> bool:
+def changeOwner(owner: address) -> bool:
     assert msg.sender == self.owner, "Unauthorized"
-    self.owner = ZERO_ADDRESS
+    # Owner can burn ownership by setting value to ZERO_ADDRESS when required
+    assert owner != self, "Can't set owner to self"
+    self.owner = owner
+    return True
+
+
+@external
+def changeDao(dao: address) -> bool:
+    assert msg.sender == self.dao, "Unauthorized"
+    # DAO will receive it's share for incentives and development fees
+    # we don't want to allow wasting that
+    assert dao not in [ZERO_ADDRESS, self], "Invalid address"
+    self.dao = dao
     return True
 
 
@@ -297,6 +317,9 @@ def _sendERC20PayableToSwapper(token: address) -> bool:
         return True
     if token == self.BASE_TOKEN:
         amount = amount - self.totalReserves
+        # don't need to swap, just distribute it as rewards
+        self._accountRewards(amount)
+        return True
     approved: uint256 = ERC20(token).allowance(self, self)
     if amount > approved:
         assert ERC20(token).approve(self, MAX_UINT256), "Failure in ERC20 approve"
@@ -304,7 +327,7 @@ def _sendERC20PayableToSwapper(token: address) -> bool:
     return True
 
 @external
-def routePaymentsToSwapper(token: address) -> bool:
+def sendSwapperPayment(token: address) -> bool:
     assert self.swapper not in [ZERO_ADDRESS, self], "Invalid destination"
     assert self.paymentsReceived != 0, "No payments accrued"
     assert token != self, "Invalid option"
@@ -314,6 +337,14 @@ def routePaymentsToSwapper(token: address) -> bool:
         self._sendEthPayableToSwapper()
     elif token.is_contract:
         assert self._sendERC20PayableToSwapper(token)
+    return True
+
+
+@external
+def sendDaoPayment() -> bool:
+    assert self.daoFeesAccrued > 0, "No fees accrued"
+    assert self._sendBaseToken(self.dao, self.daoFeesAccrued)
+    self.daoFeesAccrued = 0
     return True
 
 
