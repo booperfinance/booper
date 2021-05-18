@@ -24,7 +24,7 @@ inPoolSince: public(HashMap[address, uint256])
 outstandingRewards: public(HashMap[address, uint256])
 totalRevenue: public(uint256)
 totalReserves: public(uint256)
-devFeeAccrued: public(uint256)
+daoFeesAccrued: public(uint256)
 feeBPS: public(uint256)
 devFeeBPS: public(uint256)
 owner: public(address)
@@ -101,7 +101,7 @@ def _burn(sender: address, amount: uint256):
 def _getUnaccountedRewards(sender: address) -> uint256:
     rewards_to_pay: uint256 = 0
     if self.totalRevenue > self.inPoolSince[sender]:
-        rewards_to_pay  = (self.totalRevenue - self.inPoolSince[sender] - self.devFeeAccrued) \
+        rewards_to_pay  = (self.totalRevenue - self.inPoolSince[sender] - self.daoFeesAccrued) \
                                 * self.boopedAmount[sender] / self.totalBooped
     return rewards_to_pay
 
@@ -198,7 +198,7 @@ def _estimateFee(amount: uint256) -> uint256:
 
 @view
 @internal
-def _estimateDevFee(amount: uint256) -> uint256:
+def _estimateDaoFee(amount: uint256) -> uint256:
     return amount * self.devFeeBPS / 1000
 
 
@@ -206,7 +206,7 @@ def _estimateDevFee(amount: uint256) -> uint256:
 def _takeFeesFromAmount(amount: uint256) -> uint256:
     fee_amount: uint256 = self._estimateFee(amount)
     self.totalRevenue += fee_amount
-    self.devFeeAccrued += self._estimateDevFee(fee_amount)
+    self.daoFeesAccrued += self._estimateDaoFee(fee_amount)
     return amount - fee_amount
 
 

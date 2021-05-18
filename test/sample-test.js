@@ -8,8 +8,8 @@ describe("Booper construction", function() {
     const idex = await Idex.deploy("Idex", "IDEX", 18, BigNumber.from(10).pow(9));
     const Booper = await hre.ethers.getContractFactory("boop");
     const feeBPS = 10;
-    const devFeeBPS = 10;
-    const booper = await Booper.deploy(idex.address, feeBPS, devFeeBPS);
+    const daoFeeBPS = 10;
+    const booper = await Booper.deploy(idex.address, feeBPS, daoFeeBPS);
     await booper.deployed();
     const [owner, addr1, addr2] = await ethers.getSigners();
 
@@ -27,8 +27,8 @@ describe("Booper mint/unmint", function() {
     const [owner, addr1, addr2] = await ethers.getSigners();
     const Booper = await hre.ethers.getContractFactory("boop");
     const feeBPS = 10;
-    const devFeeBPS = 10;
-    const booper = await Booper.deploy(idex.address, feeBPS, devFeeBPS);
+    const daoFeeBPS = 10;
+    const booper = await Booper.deploy(idex.address, feeBPS, daoFeeBPS);
 
     const amount = BigNumber.from(10).pow(18);
 
@@ -60,8 +60,8 @@ describe("Booper mint/unmint", function() {
     const [owner, addr1, addr2] = await ethers.getSigners();
     const Booper = await hre.ethers.getContractFactory("boop");
     const feeBPS = 10;
-    const devFeeBPS = 10;
-    const booper = await Booper.deploy(idex.address, feeBPS, devFeeBPS);
+    const daoFeeBPS = 10;
+    const booper = await Booper.deploy(idex.address, feeBPS, daoFeeBPS);
   
     const amount = BigNumber.from(10).pow(18);
   
@@ -99,8 +99,8 @@ describe("Booper transfer", function() {
     const [owner, addr1, addr2] = await ethers.getSigners();
     const Booper = await hre.ethers.getContractFactory("boop");
     const feeBPS = 10;
-    const devFeeBPS = 10;
-    const booper = await Booper.deploy(idex.address, feeBPS, devFeeBPS);
+    const daoFeeBPS = 10;
+    const booper = await Booper.deploy(idex.address, feeBPS, daoFeeBPS);
   
     const amount = BigNumber.from(10).pow(18);
   
@@ -150,8 +150,8 @@ describe("Booper fee calculations", function() {
     const [owner, addr1, addr2] = await ethers.getSigners();
     const Booper = await hre.ethers.getContractFactory("boop");
     const feeBPS = 10;
-    const devFeeBPS = 10;
-    const booper = await Booper.deploy(idex.address, feeBPS, devFeeBPS);
+    const daoFeeBPS = 250;
+    const booper = await Booper.deploy(idex.address, feeBPS, daoFeeBPS);
   
     const amount = BigNumber.from(10).pow(18);
   
@@ -168,27 +168,40 @@ describe("Booper fee calculations", function() {
     expect(await idex.balanceOf(booper.address)).to.equal(amount);
 
     const fees = amount.mul(feeBPS).div(1000);
-    const dev_share = fees.mul(devFeeBPS).div(1000);
+    const dao_share = fees.mul(daoFeeBPS).div(1000);
     await booper.unboop(amount);
     expect(await booper.totalRevenue()).to.equal(fees);
-    expect(await booper.devFeeAccrued()).to.equal(dev_share);
+    expect(await booper.daoFeesAccrued()).to.equal(dao_share);
     expect(await idex.balanceOf(booper.address)).to.equal(fees);
     expect(await idex.balanceOf(owner.address)).to.equal(before.sub(fees));
 
     await booper.boop(amount);
     expect(await booper.totalRevenue()).to.equal(fees);
-    expect(await booper.devFeeAccrued()).to.equal(dev_share);
+    expect(await booper.daoFeesAccrued()).to.equal(dao_share);
     expect(await idex.balanceOf(booper.address)).to.equal(amount.add(fees));
 
-    const paid_fee = fees.sub(dev_share.mul(2));
-    const dev_share_2 = paid_fee.mul(devFeeBPS).div(1000);
-    const new_fees = fees.add(fees).add(dev_share_2);
-    const dev_share_final = new_fees.mul(devFeeBPS).div(1000);
+    // Each unboop operation has 2 parts: "burn" and "rewards claim"
+    // protocol fees from 1st burn + second burn
+    const new_fees_protocol = fees.mul(2);
+    // dao's share of burn fees
+    const new_fees_dao = new_fees_protocol.mul(daoFeeBPS).div(1000);
+    // rewards claim from first burn after deducting dao share
+    const paid_amount = fees.sub(new_fees_dao);
+    // protocol fees from rewards claim
+    const new_fees_rewards = new_fees_protocol.mul(feeBPS).div(1000);
+    // dao share of fees from rewards claim
+    const dao_share_2 = new_fees_rewards.mul(daoFeeBPS).div(1000);
+    // fees not paid yet (protocol fees from the new burn)
+    const fees_current_burn = fees.mul(feeBPS).div(1000);
+    // total revenue
+    const revenue = new_fees_protocol.add(new_fees_rewards).sub(fees_current_burn).sub(dao_share_2);
+    // final estimate of dao share
+    const dao_share_final = revenue.mul(daoFeeBPS).div(1000);
 
     await booper.unboop(amount);
-    expect(await booper.totalRevenue()).to.equal(new_fees);
-    expect(await booper.devFeeAccrued()).to.equal(dev_share_final);
-    expect(await idex.balanceOf(booper.address)).to.equal(new_fees.sub(paid_fee));
-    expect(await idex.balanceOf(owner.address)).to.equal(before.sub(new_fees).add(paid_fee));
+    expect(await booper.totalRevenue()).to.equal(revenue);
+    expect(await booper.daoFeesAccrued()).to.equal(dao_share_final);
+    expect(await idex.balanceOf(booper.address)).to.equal(revenue.sub(paid_amount));
+    expect(await idex.balanceOf(owner.address)).to.equal(before.sub(revenue).add(paid_amount));
   });
 });
