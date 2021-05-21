@@ -301,7 +301,7 @@ def changeDao(dao: address) -> bool:
 @external
 def changeDaoFeeBPS(dao_fee_bps: uint256) -> bool:
     assert msg.sender == self.dao, "Unauthorized"
-    assert dao_fee_bps <= 500, "Can't take more than 50 percent in fees"
+    assert dao_fee_bps <= 1000, "Invalid number"
     self.daoFeeBPS = dao_fee_bps
     return True
 
@@ -349,8 +349,9 @@ def sendSwapperPayment(token: address) -> bool:
 @external
 def sendDaoPayment() -> bool:
     assert self.daoFeesAccrued > 0, "No fees accrued"
-    self._sendBaseToken(self.dao, self.daoFeesAccrued)
+    amount: uint256 = self.daoFeesAccrued
     self.daoFeesAccrued = 0
+    self._sendBaseToken(self.dao, amount)
     return True
 
 
