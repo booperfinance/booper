@@ -19,26 +19,57 @@ describe("Booper construction", function() {
   });
 });
 
+const feeBPS = 10;
+const daoFeeBPS = 250;
+const amount = BigNumber.from(10).pow(18);
+
+let Idex;
+let idex;
+let owner, addr1, addr2;
+let Booper;
+let booper;
+
+beforeEach(async function () {
+  Idex = await hre.ethers.getContractFactory("erc20");
+  idex = await Idex.deploy("Idex", "IDEX", 18, BigNumber.from(10).pow(9));
+
+  [owner, addr1, addr2] = await ethers.getSigners();
+  Booper = await hre.ethers.getContractFactory("boop");
+  booper = await Booper.deploy(idex.address, feeBPS, daoFeeBPS);
+
+  await booper.deployed();
+});
+
 describe("Booper mint/unmint", function() {
+  it("Should transfer correctly", async function() {
+    await idex.approve(booper.address, amount);
+    await booper.boop(amount);
+    expect(await booper.balanceOf(owner.address)).to.equal(amount);
+    expect(await booper.boopedAmount(owner.address)).to.equal(amount);
+    await booper.transfer(addr1.address, amount);
+    expect(await booper.balanceOf(owner.address)).to.equal(0);
+    expect(await booper.balanceOf(addr1.address)).to.equal(amount);
+    expect(await booper.boopedAmount(owner.address)).to.equal(0);
+    expect(await booper.boopedAmount(addr1.address)).to.equal(0);
+    let success = false;
+    try {
+      await booper.transfer(addr1.address, amount);
+    } catch (error) {
+      success = true;
+    }
+    expect(success).to.equal(true);
+    expect(await booper.balanceOf(owner.address)).to.equal(0);
+    expect(await booper.balanceOf(addr1.address)).to.equal(amount);
+    expect(await booper.boopedAmount(owner.address)).to.equal(0);
+    expect(await booper.boopedAmount(addr1.address)).to.equal(0);
+  });
+
   it("Should mint and un-mint correctly", async function() {
-    const Idex = await hre.ethers.getContractFactory("erc20");
-    const idex = await Idex.deploy("Idex", "IDEX", 18, BigNumber.from(10).pow(9));
-  
-    const [owner, addr1, addr2] = await ethers.getSigners();
-    const Booper = await hre.ethers.getContractFactory("boop");
-    const feeBPS = 10;
-    const daoFeeBPS = 10;
-    const booper = await Booper.deploy(idex.address, feeBPS, daoFeeBPS);
-
-    const amount = BigNumber.from(10).pow(18);
-
-    await booper.deployed();
     expect(await booper.totalSupply()).to.equal(0);
     before = await idex.balanceOf(owner.address);
 
     const MAX_UINT256 = BigNumber.from(2).pow(256).sub(1);
     await idex.approve(booper.address, MAX_UINT256);
-    await booper.approve(booper.address, MAX_UINT256);
 
     await booper.boop(amount);
     expect(await idex.balanceOf(owner.address)).to.equal(before.sub(amount));
@@ -53,26 +84,12 @@ describe("Booper mint/unmint", function() {
     expect(await booper.totalSupply()).to.equal(0);
   });
 
-  it("Should repeated boop/unboop correctly", async function() {
-    const Idex = await hre.ethers.getContractFactory("erc20");
-    const idex = await Idex.deploy("Idex", "IDEX", 18, BigNumber.from(10).pow(9));
-  
-    const [owner, addr1, addr2] = await ethers.getSigners();
-    const Booper = await hre.ethers.getContractFactory("boop");
-    const feeBPS = 10;
-    const daoFeeBPS = 10;
-    const booper = await Booper.deploy(idex.address, feeBPS, daoFeeBPS);
-  
-    const amount = BigNumber.from(10).pow(18);
-  
-    await booper.deployed();
-
+  it("Should repeated mint/unmint correctly", async function() {
     expect(await booper.totalSupply()).to.equal(0);
     before = await idex.balanceOf(owner.address);
 
     const MAX_UINT256 = BigNumber.from(2).pow(256).sub(1);
     await idex.approve(booper.address, MAX_UINT256);
-    await booper.approve(booper.address, MAX_UINT256);
 
     await booper.boop(amount.mul(10));
     expect(await booper.totalSupply()).to.equal(amount.mul(10));
@@ -93,25 +110,11 @@ describe("Booper mint/unmint", function() {
 
 describe("Booper transfer", function() {
   it("Should transfer correctly", async function() {
-    const Idex = await hre.ethers.getContractFactory("erc20");
-    const idex = await Idex.deploy("Idex", "IDEX", 18, BigNumber.from(10).pow(9));
-  
-    const [owner, addr1, addr2] = await ethers.getSigners();
-    const Booper = await hre.ethers.getContractFactory("boop");
-    const feeBPS = 10;
-    const daoFeeBPS = 10;
-    const booper = await Booper.deploy(idex.address, feeBPS, daoFeeBPS);
-  
-    const amount = BigNumber.from(10).pow(18);
-  
-    await booper.deployed();
-
     expect(await booper.totalSupply()).to.equal(0);
     before = await idex.balanceOf(owner.address);
 
     const MAX_UINT256 = BigNumber.from(2).pow(256).sub(1);
     await idex.approve(booper.address, MAX_UINT256);
-    await booper.approve(booper.address, MAX_UINT256);
 
     await booper.boop(amount);
     expect(await booper.balanceOf(owner.address)).to.equal(amount);
@@ -144,24 +147,10 @@ describe("Booper transfer", function() {
 
 describe("Booper fee calculations", function() {
   it("Should estimate fees correctly - single participant", async function() {
-    const Idex = await hre.ethers.getContractFactory("erc20");
-    const idex = await Idex.deploy("Idex", "IDEX", 18, BigNumber.from(10).pow(9));
-  
-    const [owner, addr1, addr2] = await ethers.getSigners();
-    const Booper = await hre.ethers.getContractFactory("boop");
-    const feeBPS = 10;
-    const daoFeeBPS = 250;
-    const booper = await Booper.deploy(idex.address, feeBPS, daoFeeBPS);
-  
-    const amount = BigNumber.from(10).pow(18);
-  
-    await booper.deployed();
-
     const before = await idex.balanceOf(owner.address);
 
     const MAX_UINT256 = BigNumber.from(2).pow(256).sub(1);
     await idex.approve(booper.address, MAX_UINT256);
-    await booper.approve(booper.address, MAX_UINT256);
 
     await booper.boop(amount);
     expect(await booper.totalRevenue()).to.equal(0);
