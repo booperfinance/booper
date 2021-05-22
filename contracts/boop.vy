@@ -22,7 +22,8 @@ totalSupply: public(uint256)
 boopedAmount: public(HashMap[address, uint256])
 totalBooped: public(uint256)
 inPoolSince: public(HashMap[address, uint256])
-outstandingRewards: public(HashMap[address, uint256])
+outstandingOf: public(HashMap[address, uint256])
+totalOutstanding: public(uint256)
 totalRevenue: public(uint256)
 totalReserves: public(uint256)
 daoFeesAccrued: public(uint256)
@@ -38,16 +39,15 @@ BASE_TOKEN: public(address)
 DOMAIN_TYPE_HASH: constant(bytes32) = keccak256('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)')
 PERMIT_TYPE_HASH: constant(bytes32) = keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)")
 
-firstUnstake: bool
 
 @external
 def __init__(base_token:address, fee_bps:uint256, dao_fee_bps: uint256):
     self.BASE_TOKEN = base_token
     self.feeBPS = fee_bps
     self.daoFeeBPS = dao_fee_bps
-    self.firstUnstake = True
     self.owner = msg.sender
     self.dao = msg.sender
+    self.totalRevenue = 1
     self.DOMAIN_SEPARATOR = keccak256(
         concat(
             DOMAIN_TYPE_HASH,
@@ -101,62 +101,61 @@ def _mint(receiver: address, amount: uint256):
     log Transfer(ZERO_ADDRESS, receiver, amount)
 
 
-@internal
-def _burn(sender: address, amount: uint256):
-    self.balanceOf[sender] -= amount
-    self.boopedAmount[sender] -= amount
-    self.totalSupply -= amount
-    self.totalBooped -= amount
-
-    log Transfer(sender, ZERO_ADDRESS, amount)
-
-
 @view
 @internal
 def _getUnaccountedRewards(sender: address) -> uint256:
     rewards_to_pay: uint256 = 0
-    if self.totalRevenue > self.inPoolSince[sender]:
-        rewards_to_pay  = (self.totalRevenue - self.inPoolSince[sender] - self.daoFeesAccrued) \
-                                * self.boopedAmount[sender] / self.totalBooped
+    if self.inPoolSince[sender] == 0 or self.inPoolSince[sender] == self.totalRevenue:
+        return 0
+    elif self.totalBooped > 0:
+        cumulative_rewards: uint256 = (self.totalRevenue - self.inPoolSince[sender]) * (1000 - self.daoFeeBPS) / 1000
+        user_stake: uint256 = self.boopedAmount[sender] + self.outstandingOf[sender]
+        total_staked: uint256 = self.totalBooped + self.totalOutstanding
+        rewards_to_pay  = cumulative_rewards * user_stake / total_staked
     return rewards_to_pay
-
-
-@view
-@external
-def getRewardsEstimate(sender: address) -> uint256:
-    return self._getUnaccountedRewards(sender) + self.outstandingRewards[sender]
-
-
-@internal
-def _newEntrantFilter(sender: address):
-    if self.firstUnstake:
-        self.firstUnstake = False
-    elif self.inPoolSince[sender] == 0:
-        # Has no prior staking history we should initialize it
-        self.inPoolSince[sender] = self.totalRevenue
 
 
 @internal
 def _updateStake(sender: address):
-    self._newEntrantFilter(sender)
-    self.outstandingRewards[sender] += self._getUnaccountedRewards(sender)
+    amount: uint256 = self._getUnaccountedRewards(sender)
+    self.outstandingOf[sender] += amount
+    self.totalOutstanding += amount
     self.inPoolSince[sender] = self.totalRevenue
-
-
-@internal
-def _resetRewards(sender: address):
-    self.outstandingRewards[sender] = 0
 
 
 @internal
 def _reduceStake(sender: address):
     # Reduce stake if wallet doesn't have all minted coins. This is to ensure no idex
     # gets locked over time and fees are paid only to holders who actively created supply
-    stake_diff: uint256 = max(self.boopedAmount[sender] - self.balanceOf[sender], 0)
-    if stake_diff > 0:
+    stake_diff: uint256 = 0
+    if self.boopedAmount[sender] > self.balanceOf[sender]:
+        stake_diff = self.boopedAmount[sender] - self.balanceOf[sender]
         self._updateStake(sender)
         self.totalBooped -= stake_diff
         self.boopedAmount[sender] = self.balanceOf[sender]
+
+
+@internal
+def _burn(sender: address, amount: uint256):
+    self.balanceOf[sender] -= amount
+    self.totalSupply -= amount
+
+    self._reduceStake(sender)
+
+    log Transfer(sender, ZERO_ADDRESS, amount)
+
+
+@view
+@external
+def getRewardsEstimate(sender: address) -> uint256:
+    return self._getUnaccountedRewards(sender) + self.outstandingOf[sender]
+
+
+@internal
+def _resetRewards(sender: address):
+    self.totalOutstanding -= self.outstandingOf[sender]
+    self.outstandingOf[sender] = 0
+
 
 @internal
 def _accountRewards(amount: uint256):
@@ -229,7 +228,7 @@ def _sendBaseToken(receiver: address, amount: uint256) -> bool:
 @internal
 def _claim(sender: address) -> bool:
     self._updateStake(sender)
-    rewards_to_pay: uint256 = self.outstandingRewards[sender]
+    rewards_to_pay: uint256 = self.outstandingOf[sender]
     if rewards_to_pay > 0:
         self._resetRewards(sender)
         final_amount: uint256 = self._takeFeesFromAmount(rewards_to_pay)
@@ -239,10 +238,9 @@ def _claim(sender: address) -> bool:
 
 @internal
 def _unboop(sender: address, amount: uint256) -> bool:
+    self._claim(sender)
     burn_amount: uint256 = min(amount, self.balanceOf[sender])
     final_amount: uint256 = self._takeFeesFromAmount(burn_amount)
-
-    self._claim(sender)
     self._burn(sender, burn_amount)
     self._sendBaseToken(sender, final_amount)
     return True
@@ -250,7 +248,7 @@ def _unboop(sender: address, amount: uint256) -> bool:
 
 @external
 def boop(amount: uint256) -> bool:
-    self._boop( msg.sender, amount)
+    self._boop(msg.sender, amount)
     return True
 
 
