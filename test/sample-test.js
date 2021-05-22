@@ -240,4 +240,36 @@ describe("Booper fee calculations", function() {
     expect(await booper.totalSupply()).to.equal(0);
     expect(await idex.totalSupply()).to.equal(final_balance);
   });
+
+
+  it("Should resist flashloan attacks", async function() {
+    const iterations = 10;
+
+    await idex.approve(booper.address, MAX_UINT256);
+    await idex.connect(addr1).approve(booper.address, MAX_UINT256);
+    await idex.connect(addr2).approve(booper.address, MAX_UINT256);
+
+    // stake
+    await idex.transfer(addr1.address, amount);
+    await booper.connect(addr1).boop(amount);
+
+    // stake and unstake
+    for(i = 0; i < iterations; i++) {
+      await booper.boop(amount.mul(10000));
+      await booper.unboop(amount.mul(10000));
+    }
+
+    // simulate flashloan attach
+    await idex.transfer(addr2.address, amount.mul(100000));
+    await booper.connect(addr2).boop(amount.mul(100000));
+    await booper.connect(addr2).unboop(amount.mul(100000));
+    await idex.connect(addr2).transfer(owner.address, amount.mul(99000));
+
+    // unstake
+    await booper.connect(addr1).unboop(amount);
+
+    const addr_balance = await idex.balanceOf(addr1.address);
+    const attacker_balance = await idex.balanceOf(addr2.address);
+    expect(addr_balance.gt(attacker_balance)).to.equal(true);
+  });
 });

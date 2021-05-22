@@ -125,13 +125,12 @@ def _updateStake(sender: address):
 
 @internal
 def _reduceStake(sender: address):
+    self._updateStake(sender)
     # Reduce stake if wallet doesn't have all minted coins. This is to ensure no idex
     # gets locked over time and fees are paid only to holders who actively created supply
-    stake_diff: uint256 = 0
     if self.boopedAmount[sender] > self.balanceOf[sender]:
-        stake_diff = self.boopedAmount[sender] - self.balanceOf[sender]
-        self._updateStake(sender)
-        self.totalBooped -= stake_diff
+        amount: uint256 = self.boopedAmount[sender] - self.balanceOf[sender]
+        self.totalBooped -= amount
         self.boopedAmount[sender] = self.balanceOf[sender]
 
 
@@ -173,6 +172,7 @@ def _addToRewards(sender: address, amount: uint256) -> bool:
 @internal
 def _transfer(sender: address, receiver: address, amount: uint256):
     assert not receiver in [self, ZERO_ADDRESS], "Invalid destination"
+    assert self.balanceOf[sender] >= amount, "Invalid amount"
 
     self.balanceOf[sender] -= amount
     self.balanceOf[receiver] += amount
