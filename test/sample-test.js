@@ -206,7 +206,6 @@ describe("Booper fee calculations", function() {
   });
 
   it("Should estimate fees correctly - multi participant", async function() {
-    const before = await idex.balanceOf(owner.address);
     const iterations = 10;
 
     await idex.approve(booper.address, MAX_UINT256);
