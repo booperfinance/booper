@@ -236,6 +236,7 @@ describe("Booper fee calculations", function() {
     const dao_share = await idex.balanceOf(booper.address);
     const addr_balance = await idex.balanceOf(addr1.address);
     const final_balance = staker_balance.add(dao_share).add(addr_balance).add(arbitrageur_balance);
+    expect(await idex.balanceOf(addr2.address)).to.equal(amount.mul(99).mul(1000));
     expect(addr_balance.gt(amount)).to.equal(true);
     expect(await booper.totalSupply()).to.equal(0);
     expect(await idex.totalSupply()).to.equal(final_balance);
