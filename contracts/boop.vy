@@ -330,6 +330,7 @@ def _sendERC20PayableToSwapper(token: address) -> bool:
     assert ERC20(token).transfer(self.swapper, amount), "Failure in ERC20 transfer"
     return True
 
+
 @external
 def sendSwapperPayment(token: address) -> bool:
     assert self.swapper not in [ZERO_ADDRESS, self], "Invalid destination"
