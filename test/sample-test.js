@@ -152,7 +152,7 @@ describe("Booper transfer", function() {
 });
 
 describe("Booper fee calculations", function() {
-  it("Should estimate fees correctly - single participant", async function() {
+  it("Should estimate staking rewards correctly - single participant", async function() {
     const before = await idex.balanceOf(owner.address);
 
     await idex.approve(booper.address, MAX_UINT256);
@@ -205,7 +205,7 @@ describe("Booper fee calculations", function() {
     await booper.unboop(amount);
   });
 
-  it("Should estimate fees correctly - multi participant", async function() {
+  it("Should estimate staking rewards correctly - multi participant", async function() {
     const iterations = 10;
 
     await idex.approve(booper.address, MAX_UINT256);
