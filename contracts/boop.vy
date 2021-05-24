@@ -272,8 +272,8 @@ def addToRewards(amount: uint256) -> bool:
 
 @external
 def setSwapperContract(swapper: address) -> bool:
-    assert swapper not in [ZERO_ADDRESS, self], "Invalid address"
     assert msg.sender == self.owner, "Unauthorized"
+    assert swapper not in [ZERO_ADDRESS, self], "Invalid address"
     self.swapper = swapper
     return True
 
