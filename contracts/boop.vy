@@ -312,7 +312,7 @@ def changeDaoFeeBPS(dao_fee_bps: uint256) -> bool:
     assert msg.sender == self.dao, "Unauthorized"
     # Dao's share of the fees, DAO can decide to take up to 50% of the fees
     # to pay for dev work or growth incentives
-    assert dao_fee_bps <= 500, "DAO share can't be higher than 50% of fees"
+    assert dao_fee_bps <= 500, "DAO share of fees can't be higher than 50%"
     self.daoFeeBPS = dao_fee_bps
     return True
 
