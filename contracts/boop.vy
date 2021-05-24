@@ -226,23 +226,23 @@ def _sendBaseToken(receiver: address, amount: uint256) -> bool:
 
 
 @internal
-def _claim(sender: address) -> bool:
+def _claim(sender: address) -> uint256:
     self._updateStake(sender)
     rewards_to_pay: uint256 = self.outstandingOf[sender]
+    rewards_amount: uint256 = 0
     if rewards_to_pay > 0:
         self._resetRewards(sender)
-        final_amount: uint256 = self._takeFeesFromAmount(rewards_to_pay)
-        self._sendBaseToken(sender, final_amount)
-    return True
+        rewards_amount = self._takeFeesFromAmount(rewards_to_pay)
+    return rewards_amount
 
 
 @internal
 def _unboop(sender: address, amount: uint256) -> bool:
-    self._claim(sender)
+    rewards_after_fees: uint256 = self._claim(sender)
     burn_amount: uint256 = min(amount, self.balanceOf[sender])
-    final_amount: uint256 = self._takeFeesFromAmount(burn_amount)
+    amount_after_fees: uint256 = self._takeFeesFromAmount(burn_amount)
     self._burn(sender, burn_amount)
-    self._sendBaseToken(sender, final_amount)
+    self._sendBaseToken(sender, amount_after_fees + rewards_after_fees)
     return True
 
 
@@ -260,7 +260,8 @@ def unboop(amount: uint256) -> bool:
 
 @external
 def claim() -> bool:
-    self._claim(msg.sender)
+    rewards_after_fees: uint256 = self._claim(msg.sender)
+    self._sendBaseToken(msg.sender, rewards_after_fees)
     return True
 
 
