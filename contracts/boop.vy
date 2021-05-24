@@ -25,7 +25,6 @@ inPoolSince: public(HashMap[address, uint256])
 outstandingOf: public(HashMap[address, uint256])
 totalOutstanding: public(uint256)
 totalRevenue: public(uint256)
-totalReserves: public(uint256)
 daoFeesAccrued: public(uint256)
 feeBPS: public(uint256)
 daoFeeBPS: public(uint256)
@@ -209,7 +208,6 @@ def _boop(sender: address, amount: uint256) -> bool:
     mint_amount: uint256 = min(amount, ERC20(self.BASE_TOKEN).balanceOf(sender))
     assert ERC20(self.BASE_TOKEN).transferFrom(sender, self, mint_amount), "Failure in ERC20 transfer"
     self._mint(sender, mint_amount)
-    self.totalReserves += mint_amount
     return True
 
 
@@ -222,7 +220,6 @@ def _takeFeesFromAmount(amount: uint256) -> uint256:
 
 @internal
 def _sendBaseToken(receiver: address, amount: uint256) -> bool:
-    self.totalReserves -= amount
     assert ERC20(self.BASE_TOKEN).transfer(receiver, amount), "Failure in ERC20 transfer"
     return True
 
@@ -345,7 +342,7 @@ def _sendERC20PayableToSwapper(token: address) -> bool:
     if amount == 0:
         return True
     if token == self.BASE_TOKEN:
-        amount = amount - self.totalReserves
+        amount = amount - self.totalSupply
         # don't need to swap, just distribute it as rewards
         self._accountRewards(amount)
         return True

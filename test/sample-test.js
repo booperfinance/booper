@@ -241,7 +241,6 @@ describe("Booper fee calculations", function() {
     expect(await idex.totalSupply()).to.equal(final_balance);
   });
 
-
   it("Should resist flashloan attacks", async function() {
     const iterations = 10;
 
@@ -271,5 +270,46 @@ describe("Booper fee calculations", function() {
     const addr_balance = await idex.balanceOf(addr1.address);
     const attacker_balance = await idex.balanceOf(addr2.address);
     expect(addr_balance.gt(attacker_balance)).to.equal(true);
+  });
+
+
+  it("Should claim correctly", async function() {
+    const iterations = 10;
+
+    await idex.approve(booper.address, MAX_UINT256);
+    await idex.connect(addr1).approve(booper.address, MAX_UINT256);
+
+    // stake
+    await idex.transfer(addr1.address, amount);
+    await booper.connect(addr1).boop(amount);
+        
+    // stake and unstake
+    for(i = 0; i < iterations; i++) {
+      await booper.boop(amount.mul(10000));
+      await booper.unboop(amount.mul(10000));
+    }
+
+    await booper.connect(addr1).claim();
+
+    const addr_balance = await idex.balanceOf(addr1.address);
+    expect(addr_balance.gt(amount)).to.equal(true);
+  });
+
+  it("Should add rewards correctly", async function() {
+    await idex.approve(booper.address, MAX_UINT256);
+    await idex.connect(addr1).approve(booper.address, MAX_UINT256);
+
+    // stake
+    await idex.transfer(addr1.address, amount);
+    await booper.connect(addr1).boop(amount);
+        
+    await booper.addToRewards(amount.mul(100000));
+
+    expect(await booper.totalRevenue()).to.equal(amount.mul(100000).add(1));
+
+    // claim
+    await booper.connect(addr1).claim();
+    const addr_balance = await idex.balanceOf(addr1.address);
+    expect(addr_balance.gt(amount.mul(100))).to.equal(true);
   });
 });
