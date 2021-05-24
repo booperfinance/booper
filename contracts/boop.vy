@@ -164,7 +164,7 @@ def _accountRewards(amount: uint256):
 
 @internal
 def _addToRewards(sender: address, amount: uint256) -> bool:
-    assert ERC20(self.BASE_TOKEN).transfer(self, amount), "Failure in ERC20 transfer"
+    assert ERC20(self.BASE_TOKEN).transferFrom(sender, self, amount), "Failure in ERC20 transfer"
     self._accountRewards(amount)
     return True
 
