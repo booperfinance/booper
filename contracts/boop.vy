@@ -32,6 +32,7 @@ daoFeeBPS: public(uint256)
 owner: public(address)
 swapper: public(address)
 dao: public(address)
+feeController: public(address)
 paymentsReceived: public(uint256)
 nonces: public(HashMap[address, uint256])
 DOMAIN_SEPARATOR: public(bytes32)
@@ -47,6 +48,7 @@ def __init__(base_token:address, fee_bps:uint256, dao_fee_bps: uint256):
     self.daoFeeBPS = dao_fee_bps
     self.owner = msg.sender
     self.dao = msg.sender
+    self.feeController = msg.sender
     self.totalRevenue = 1
     self.DOMAIN_SEPARATOR = keccak256(
         concat(
@@ -298,10 +300,29 @@ def changeDao(dao: address) -> bool:
 
 
 @external
+def changeFeeController(fee_controller: address) -> bool:
+    assert msg.sender == self.owner, "Unauthorized"
+    assert fee_controller not in [ZERO_ADDRESS, self], "Invalid address"
+    self.feeController = fee_controller
+    return True
+
+
+@external
 def changeDaoFeeBPS(dao_fee_bps: uint256) -> bool:
     assert msg.sender == self.dao, "Unauthorized"
-    assert dao_fee_bps <= 1000, "Invalid number"
+    # Dao's share of the fees, DAO can decide to take up to 50% of the fees
+    # to pay for dev work or growth incentives
+    assert dao_fee_bps <= 500, "DAO share can't be higher than 50% of fees"
     self.daoFeeBPS = dao_fee_bps
+    return True
+
+
+@external
+def changeTradeFeeBPS(fee_bps: uint256) -> bool:
+    assert msg.sender == self.feeController, "Unauthorized"
+    # Fees should remain low in low volatility and potentially increase in higher volatility
+    assert fee_bps <= 50, "Can't set trade fee higher than 5%"
+    self.feeBPS = fee_bps
     return True
 
 
