@@ -354,7 +354,6 @@ def _sendERC20PayableToSwapper(token: address) -> bool:
 
 @external
 def sendSwapperPayment(token: address) -> bool:
-    assert self.swapper not in [ZERO_ADDRESS, self], "Invalid destination"
     assert token != self, "Invalid option"
     # Swapper will swap ETH or any ERC20 to IDEX and call addToRewards
     # to be distributed to stakers
