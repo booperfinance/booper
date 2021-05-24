@@ -46,6 +46,7 @@ def __init__(base_token:address, fee_bps:uint256, dao_fee_bps: uint256):
     self.feeBPS = fee_bps
     self.daoFeeBPS = dao_fee_bps
     self.owner = msg.sender
+    self.swapper = msg.sender
     self.dao = msg.sender
     self.feeController = msg.sender
     self.totalRevenue = 1
@@ -332,6 +333,7 @@ def __default__():
 
 @internal
 def _sendEthPayableToSwapper():
+    assert self.paymentsReceived != 0, "No payments accrued"
     send(self.swapper, self.paymentsReceived)
     self.paymentsReceived = 0
 
@@ -353,7 +355,6 @@ def _sendERC20PayableToSwapper(token: address) -> bool:
 @external
 def sendSwapperPayment(token: address) -> bool:
     assert self.swapper not in [ZERO_ADDRESS, self], "Invalid destination"
-    assert self.paymentsReceived != 0, "No payments accrued"
     assert token != self, "Invalid option"
     # Swapper will swap ETH or any ERC20 to IDEX and call addToRewards
     # to be distributed to stakers

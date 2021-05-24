@@ -312,4 +312,18 @@ describe("Booper fee calculations", function() {
     const addr_balance = await idex.balanceOf(addr1.address);
     expect(addr_balance.gt(amount.mul(100))).to.equal(true);
   });
+
+  it("Should account idex sent via erc20 transfer correctly", async function() {
+    await idex.approve(booper.address, MAX_UINT256);
+    await idex.connect(addr1).approve(booper.address, MAX_UINT256);
+
+    // stake
+    await idex.transfer(addr1.address, amount);
+    await booper.connect(addr1).boop(amount);
+
+    await idex.transfer(booper.address, amount.mul(100000));
+    await booper.sendSwapperPayment(idex.address);
+
+    expect(await booper.totalRevenue()).to.equal(amount.mul(100000).add(1));
+  });
 });
