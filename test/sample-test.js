@@ -236,7 +236,7 @@ describe("Booper fee calculations", function() {
     const addr_balance = await idex.balanceOf(addr1.address);
     const final_balance = staker_balance.add(dao_share).add(addr_balance).add(arbitrageur_balance);
     expect(await idex.balanceOf(addr2.address)).to.equal(amount.mul(99).mul(1000));
-    expect(addr_balance.gt(amount)).to.equal(true);
+    expect(addr_balance).to.gt(amount);
     expect(await booper.totalSupply()).to.equal(0);
     expect(await idex.totalSupply()).to.equal(final_balance);
   });
@@ -269,7 +269,7 @@ describe("Booper fee calculations", function() {
 
     const addr_balance = await idex.balanceOf(addr1.address);
     const attacker_balance = await idex.balanceOf(addr2.address);
-    expect(addr_balance.gt(attacker_balance)).to.equal(true);
+    expect(addr_balance).to.gt(attacker_balance);
   });
 
 
@@ -292,7 +292,7 @@ describe("Booper fee calculations", function() {
     await booper.connect(addr1).claim();
 
     const addr_balance = await idex.balanceOf(addr1.address);
-    expect(addr_balance.gt(amount)).to.equal(true);
+    expect(addr_balance).to.gt(amount);
   });
 
   it("Should add rewards correctly", async function() {
@@ -310,7 +310,7 @@ describe("Booper fee calculations", function() {
     // claim
     await booper.connect(addr1).claim();
     const addr_balance = await idex.balanceOf(addr1.address);
-    expect(addr_balance.gt(amount.mul(100))).to.equal(true);
+    expect(addr_balance).to.gt(amount.mul(100));
   });
 
   it("Should account idex sent via erc20 transfer correctly", async function() {
