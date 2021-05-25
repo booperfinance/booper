@@ -368,7 +368,7 @@ def sendSwapperPayment(token: address) -> bool:
 def sendDaoPayment() -> bool:
     assert self.daoFeesAccrued > 0, "No fees accrued"
     amount: uint256 = self.daoFeesAccrued
-    self.daoFeesAccrued = 0
+    self.daoFeesAccrued -= amount
     self._sendBaseToken(self.dao, amount)
     return True
 

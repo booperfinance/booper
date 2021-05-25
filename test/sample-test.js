@@ -282,7 +282,7 @@ describe("Booper fee calculations", function() {
     // stake
     await idex.transfer(addr1.address, amount);
     await booper.connect(addr1).boop(amount);
-        
+
     // stake and unstake
     for(i = 0; i < iterations; i++) {
       await booper.boop(amount.mul(10000));
@@ -325,5 +325,26 @@ describe("Booper fee calculations", function() {
     await booper.sendSwapperPayment(idex.address);
 
     expect(await booper.totalRevenue()).to.equal(amount.mul(100000).add(1));
+  });
+
+  it("Should send dao payment correctly", async function() {
+    await idex.approve(booper.address, MAX_UINT256);
+    await idex.connect(addr1).approve(booper.address, MAX_UINT256);
+
+    // stake
+    await idex.transfer(addr1.address, amount.mul(1000).add(amount));
+    await booper.connect(addr1).boop(amount);
+
+    const before = await idex.balanceOf(owner.address);
+    await idex.transfer(addr2.address, before);
+
+    await booper.connect(addr1).addToRewards(amount.mul(100));
+
+    await booper.connect(addr1).unboop(amount.sub(1));
+    await booper.connect(addr1).claim();
+    await booper.connect(addr1).unboop(BigNumber.from(1));
+
+    await booper.sendDaoPayment();
+    expect(await idex.balanceOf(owner.address)).to.gt(amount);
   });
 });
