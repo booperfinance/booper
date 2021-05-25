@@ -327,6 +327,26 @@ describe("Booper fee calculations", function() {
     expect(await booper.totalRevenue()).to.equal(amount.mul(100000).add(1));
   });
 
+  it("Should account generic erc20 added to rewards correctly", async function() {
+    const Token = await hre.ethers.getContractFactory("erc20");
+    const token = await Token.deploy("Token", "TOKEN", 18, 1);
+
+    await token.connect(addr1).approve(booper.address, MAX_UINT256);
+    await token.transfer(addr1.address, amount);
+
+    await idex.approve(booper.address, MAX_UINT256);
+    await idex.connect(addr1).approve(booper.address, MAX_UINT256);
+
+    // stake
+    await idex.transfer(addr1.address, amount);
+    await booper.connect(addr1).boop(amount);
+
+    await token.connect(addr1).transfer(booper.address, amount);
+    await booper.sendSwapperPayment(token.address);
+
+    expect(await token.balanceOf(owner.address)).to.equal(amount);
+  });
+
   it("Should send dao payment correctly", async function() {
     await idex.approve(booper.address, MAX_UINT256);
     await idex.connect(addr1).approve(booper.address, MAX_UINT256);
