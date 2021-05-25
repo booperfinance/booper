@@ -1,6 +1,7 @@
 const { expect } = require("chai");
 const hre = require("hardhat");
-const {BigNumber} = require("ethers")
+const {BigNumber} = require("ethers");
+const { ethers } = require("hardhat");
 
 describe("Booper construction", function() {
   it("Should deploy contract successfully", async function() {
@@ -362,5 +363,15 @@ describe("Booper fee calculations", function() {
 
     await booper.sendDaoPayment();
     expect(await idex.balanceOf(owner.address)).to.equal(amount.mul(25000));
+  });
+
+  it("Should receive direct payments", async function() {
+    prov = ethers.getDefaultProvider();
+    const before = await prov.getBalance(owner.address);
+    await owner.sendTransaction({to: booper.address, value: amount});
+    expect(await booper.paymentsReceived()).to.equal(amount);
+    await booper.sendSwapperPayment(ethers.constants.AddressZero);
+    expect(await booper.paymentsReceived()).to.equal(BigNumber.from(0));
+    expect(await prov.getBalance(owner.address)).to.equal(before);
   });
 });
