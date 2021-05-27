@@ -13,7 +13,18 @@ async function main() {
   // manually to make sure everything is compiled
   // await hre.run('compile');
 
-  const idex_address = "0xB705268213D593B8FD88d3FDEFF93AFF5CbDcfAE";
+  const [deployer] = await ethers.getSigners();
+
+  console.log(
+      "Deploying contracts with the account:",
+      deployer.address
+  );
+
+  console.log("Account balance:", (await deployer.getBalance()).toString());
+
+
+  // const idex_address = "0xB705268213D593B8FD88d3FDEFF93AFF5CbDcfAE"; // ETH mainnet
+  const idex_address = "0x0856978F7fFff0a2471B4520E3521c4B3343e36f"; // BSC mainnet
   const feeBPS = 100;
   const daoFeeBPS = 1000;
 
