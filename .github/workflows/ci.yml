@@ -7,7 +7,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2         # checkout the repo
       - run: npm ci                       # install packages
-      - run: npm test                     # run tests (configured to use jest-junit reporter)
+      - run: npm install --save-dev hardhat-vyper
+      - run: npx hardhat test             # run tests (configured to use jest-junit reporter)
       - uses: actions/upload-artifact@v2  # upload test results
         if: success() || failure()        # run this step even if previous step failed
         with:
