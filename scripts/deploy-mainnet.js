@@ -13,13 +13,17 @@ async function main() {
   // manually to make sure everything is compiled
   // await hre.run('compile');
 
+  const idex_address = "0xB705268213D593B8FD88d3FDEFF93AFF5CbDcfAE";
+  const feeBPS = 10;
+  const daoFeeBPS = 10;
+
   // We get the contract to deploy
   const Booper = await hre.ethers.getContractFactory("boop");
-  const boop = await Booper.deploy();
+  const booper = await Booper.deploy(idex_address, feeBPS, daoFeeBPS);
 
-  await boop.deployed();
+  await booper.deployed();
 
-  console.log("Booper deployed to:", boop.address);
+  console.log("Booper deployed to:", booper.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
