@@ -14,8 +14,8 @@ async function main() {
   // await hre.run('compile');
 
   const idex_address = "0xB705268213D593B8FD88d3FDEFF93AFF5CbDcfAE";
-  const feeBPS = 10;
-  const daoFeeBPS = 10;
+  const feeBPS = 100;
+  const daoFeeBPS = 1000;
 
   // We get the contract to deploy
   const Booper = await hre.ethers.getContractFactory("boop");
