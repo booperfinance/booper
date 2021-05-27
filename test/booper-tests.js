@@ -315,6 +315,16 @@ describe("Booper fee calculations", function() {
     expect(addr_balance).to.gt(amount.mul(100));
   });
 
+  it("Should not add rewards if no one is staking", async function() {
+    let success = false;
+    try {
+      await booper.addToRewards(amount.mul(100000));
+    } catch (error) {
+      success = true;
+    }
+    expect(success).to.equal(true);
+  });
+
   it("Should account idex sent via erc20 transfer correctly", async function() {
     await idex.approve(booper.address, MAX_UINT256);
     await idex.connect(addr1).approve(booper.address, MAX_UINT256);
@@ -374,6 +384,20 @@ describe("Booper fee calculations", function() {
     await booper.sendSwapperPayment(ethers.constants.AddressZero);
     expect(await booper.paymentsReceived()).to.equal(BigNumber.from(0));
     expect(await prov.getBalance(owner.address)).to.equal(before);
+  });
+
+  it("Should not payment on invalid token address", async function() {
+    await idex.approve(booper.address, MAX_UINT256);
+    await booper.boop(amount);
+    await booper.addToRewards(amount.mul(100000));
+    let success = false;
+    try {
+      // not a contract so this should raise an error
+      await booper.sendSwapperPayment(owner.address);
+    } catch (error) {
+      success = true;
+    }
+    expect(success).to.equal(true);
   });
 });
 

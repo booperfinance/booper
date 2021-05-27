@@ -360,6 +360,8 @@ def sendSwapperPayment(token: address) -> bool:
         self._sendEthPayableToSwapper()
     elif token.is_contract:
         assert self._sendERC20PayableToSwapper(token)
+    elif not token.is_contract:
+        raise "Not a contract"
     return True
 
 
