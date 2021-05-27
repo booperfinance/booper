@@ -375,3 +375,123 @@ describe("Booper fee calculations", function() {
     expect(await prov.getBalance(owner.address)).to.equal(before);
   });
 });
+
+
+describe("Booper stored address management", function() {
+  it("Should assign addresses at initialization", async function() {
+    expect(await booper.owner()).to.equal(owner.address);
+    expect(await booper.dao()).to.equal(owner.address);
+    expect(await booper.swapper()).to.equal(owner.address);
+    expect(await booper.feeController()).to.equal(owner.address);
+  });
+
+  it("Should fail on unauthorized access - changeOwner", async function() {
+    let success = true;    
+    try {
+      await booper.connect(addr1).changeOwner(addr1.address);
+      success = false;
+    } catch (error) {}
+    expect(await booper.owner()).to.equal(owner.address);
+    expect(success).to.equal(true);
+  });
+
+  it("Should succeed on authorized access - changeOwner", async function() {
+    await booper.changeOwner(addr1.address);
+    expect(await booper.owner()).to.equal(addr1.address);
+  });
+
+  it("Should fail on unauthorized access - changeDao", async function() {
+    let success = true;    
+    try {
+      await booper.connect(addr1).changeDao(addr1.address);
+      success = false;
+    } catch (error) {}
+    expect(await booper.dao()).to.equal(owner.address);
+    expect(success).to.equal(true);
+  });
+
+  it("Should succeed on authorized access - changeDao", async function() {
+    await booper.changeDao(addr1.address);
+    expect(await booper.dao()).to.equal(addr1.address);
+  });
+
+  it("Should fail on unauthorized access - changeFeeController", async function() {
+    let success = true;    
+    try {
+      await booper.connect(addr1).changeFeeController(addr1.address);
+      success = false;
+    } catch (error) {}
+    expect(await booper.feeController()).to.equal(owner.address);
+    expect(success).to.equal(true);
+  });
+
+  it("Should succeed on authorized access - changeFeeController", async function() {
+    await booper.changeFeeController(addr1.address);
+    expect(await booper.feeController()).to.equal(addr1.address);
+  });
+
+  it("Should fail on unauthorized access - changeSwapper", async function() {
+    let success = true;    
+    try {
+      await booper.connect(addr1).changeSwapper(addr1.address);
+      success = false;
+    } catch (error) {}
+    expect(await booper.swapper()).to.equal(owner.address);
+    expect(success).to.equal(true);
+  });
+
+  it("Should succeed on authorized access - changeSwapper", async function() {
+    await booper.changeSwapper(addr1.address);
+    expect(await booper.swapper()).to.equal(addr1.address);
+  });
+
+  it("Should fail on unauthorized access - changeTradeFeeBPS", async function() {
+    let success = true;    
+    try {
+      await booper.addr1.changeTradeFeeBPS(100);
+      success = false;
+    } catch (error) {}
+    expect(await booper.feeBPS()).to.equal(BigNumber.from(10));
+    expect(success).to.equal(true);
+  });
+
+  it("Should fail on invalid value - changeTradeFeeBPS", async function() {
+    let success = true;    
+    try {
+      await booper.changeTradeFeeBPS(BigNumber.from(1000));
+      success = false;
+    } catch (error) {}
+    expect(await booper.feeBPS()).to.equal(BigNumber.from(10));
+    expect(success).to.equal(true);
+  });
+
+  it("Should succeed on authorized access - changeTradeFeeBPS", async function() {
+    await booper.changeTradeFeeBPS(BigNumber.from(50));
+    expect(await booper.feeBPS()).to.equal(BigNumber.from(50));
+  });
+
+  it("Should fail on unauthorized access - changeDaoFeeBPS", async function() {
+    let success = true;    
+    try {
+      await booper.addr1.changeDaoFeeBPS(100);
+      success = false;
+    } catch (error) {}
+    expect(await booper.daoFeeBPS()).to.equal(daoFeeBPS);
+    expect(success).to.equal(true);
+  });
+
+  it("Should fail on invalid value - changeDaoFeeBPS", async function() {
+    let success = true;    
+    try {
+      await booper.changeDaoFeeBPS(BigNumber.from(1000));
+      success = false;
+    } catch (error) {}
+    expect(await booper.daoFeeBPS()).to.equal(daoFeeBPS);
+    expect(success).to.equal(true);
+  });
+
+  it("Should succeed on authorized access - changeDaoFeeBPS", async function() {
+    await booper.changeDaoFeeBPS(BigNumber.from(100));
+    expect(await booper.daoFeeBPS()).to.equal(BigNumber.from(100));
+  });
+});
