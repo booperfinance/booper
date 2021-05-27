@@ -39,7 +39,6 @@ BASE_TOKEN: public(address)
 DOMAIN_TYPE_HASH: constant(bytes32) = keccak256('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)')
 PERMIT_TYPE_HASH: constant(bytes32) = keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)")
 
-
 @external
 def __init__(base_token:address, fee_bps:uint256, dao_fee_bps: uint256):
     self.BASE_TOKEN = base_token
@@ -82,13 +81,13 @@ def decimals() -> uint256:
 @view
 @internal
 def _estimateFee(amount: uint256) -> uint256:
-    return amount * self.feeBPS / 1000
+    return amount * self.feeBPS / 10000
 
 
 @view
 @internal
 def _estimateDaoFee(amount: uint256) -> uint256:
-    return amount * self.daoFeeBPS / 1000
+    return amount * self.daoFeeBPS / 10000
 
 
 @internal
@@ -110,7 +109,7 @@ def _getUnaccountedRewards(sender: address) -> uint256:
     if self.inPoolSince[sender] == 0 or self.inPoolSince[sender] == self.totalRevenue:
         return 0
     elif self.totalBooped > 0:
-        cumulative_rewards: uint256 = (self.totalRevenue - self.inPoolSince[sender]) * (1000 - self.daoFeeBPS) / 1000
+        cumulative_rewards: uint256 = (self.totalRevenue - self.inPoolSince[sender]) * (10000 - self.daoFeeBPS) / 10000
         user_stake: uint256 = self.boopedAmount[sender] + self.outstandingOf[sender]
         total_staked: uint256 = self.totalBooped + self.totalOutstanding
         rewards_to_pay  = cumulative_rewards * user_stake / total_staked
@@ -310,7 +309,7 @@ def changeDaoFeeBPS(dao_fee_bps: uint256) -> bool:
     assert msg.sender == self.dao, "Unauthorized"
     # Dao's share of the fees, DAO can decide to take up to 50% of the fees
     # to pay for dev work or growth incentives
-    assert dao_fee_bps <= 500, "DAO share of fees can't be higher than 50%"
+    assert dao_fee_bps <= 5000, "DAO share of fees can't be higher than 50%"
     self.daoFeeBPS = dao_fee_bps
     return True
 
@@ -319,7 +318,7 @@ def changeDaoFeeBPS(dao_fee_bps: uint256) -> bool:
 def changeTradeFeeBPS(fee_bps: uint256) -> bool:
     assert msg.sender == self.feeController, "Unauthorized"
     # Fees should remain low in low volatility and potentially increase in higher volatility
-    assert fee_bps <= 50, "Can't set trade fee higher than 5%"
+    assert fee_bps <= 500, "Can't set trade fee higher than 5%"
     self.feeBPS = fee_bps
     return True
 

@@ -8,8 +8,8 @@ describe("Booper construction", function() {
     const Idex = await hre.ethers.getContractFactory("erc20");
     const idex = await Idex.deploy("Idex", "IDEX", 18, BigNumber.from(10).pow(9));
     const Booper = await hre.ethers.getContractFactory("boop");
-    const feeBPS = 10;
-    const daoFeeBPS = 10;
+    const feeBPS = 100; // 1%
+    const daoFeeBPS = 2500; // 25%
     const booper = await Booper.deploy(idex.address, feeBPS, daoFeeBPS);
     await booper.deployed();
     const [owner, addr1, addr2] = await ethers.getSigners();
@@ -20,8 +20,9 @@ describe("Booper construction", function() {
   });
 });
 
-const feeBPS = 10;
-const daoFeeBPS = 250;
+const ONE_HUNDRED_PERCENT_IN_BPS = 10000; // 100%
+const feeBPS = 100; // 1%
+const daoFeeBPS = 2500; // 25%
 const amount = BigNumber.from(10).pow(18);
 const MAX_UINT256 = BigNumber.from(2).pow(256).sub(1);
 
@@ -56,7 +57,7 @@ describe("Booper mint/unmint", function() {
     expect(await booper.totalSupply()).to.equal(amount);
 
     await booper.unboop(amount);
-    const fees = amount.mul(feeBPS).div(1000);
+    const fees = amount.mul(feeBPS).div(ONE_HUNDRED_PERCENT_IN_BPS);
     const returned_amount_after_fees = before.sub(fees); 
     expect(await idex.balanceOf(owner.address)).to.equal(returned_amount_after_fees);
     expect(await booper.balanceOf(owner.address)).to.equal(0);
@@ -164,8 +165,8 @@ describe("Booper fee calculations", function() {
     expect(await booper.totalRevenue()).to.equal(1);
     expect(await idex.balanceOf(booper.address)).to.equal(amount);
 
-    const fees = amount.mul(feeBPS).div(1000);
-    const dao_share = fees.mul(daoFeeBPS).div(1000);
+    const fees = amount.mul(feeBPS).div(ONE_HUNDRED_PERCENT_IN_BPS);
+    const dao_share = fees.mul(daoFeeBPS).div(ONE_HUNDRED_PERCENT_IN_BPS);
     await booper.unboop(amount);
     expect(await booper.totalRevenue()).to.equal(fees.add(1));
     expect(await booper.daoFeesAccrued()).to.equal(dao_share);
@@ -181,20 +182,20 @@ describe("Booper fee calculations", function() {
     // protocol fees from 1st burn + second burn
     const new_fees_protocol = fees.mul(2);
     // dao's share of burn fees
-    const new_fees_dao = new_fees_protocol.mul(daoFeeBPS).div(1000);
+    const new_fees_dao = new_fees_protocol.mul(daoFeeBPS).div(ONE_HUNDRED_PERCENT_IN_BPS);
     // rewards claim from first burn after deducting dao share
     const paid_amount = fees.add(dao_share).sub(new_fees_dao);
     // protocol fees from rewards claim
-    const new_fees_rewards = new_fees_protocol.mul(feeBPS).div(1000);
+    const new_fees_rewards = new_fees_protocol.mul(feeBPS).div(ONE_HUNDRED_PERCENT_IN_BPS);
     // dao share of fees from rewards claim
-    const dao_share_2 = new_fees_rewards.mul(daoFeeBPS).div(1000);
+    const dao_share_2 = new_fees_rewards.mul(daoFeeBPS).div(ONE_HUNDRED_PERCENT_IN_BPS);
     // fees not paid yet (protocol fees from the new burn)
-    const fees_current_burn = fees.mul(feeBPS).div(1000);
-    const dao_share_current_burn = fees_current_burn.mul(daoFeeBPS).div(1000);
+    const fees_current_burn = fees.mul(feeBPS).div(ONE_HUNDRED_PERCENT_IN_BPS);
+    const dao_share_current_burn = fees_current_burn.mul(daoFeeBPS).div(ONE_HUNDRED_PERCENT_IN_BPS);
     // total revenue
     const revenue = new_fees_protocol.add(new_fees_rewards).add(dao_share_current_burn).sub(fees_current_burn).sub(dao_share_2);
     // final estimate of dao share
-    const dao_share_final = revenue.mul(daoFeeBPS).div(1000);
+    const dao_share_final = revenue.mul(daoFeeBPS).div(ONE_HUNDRED_PERCENT_IN_BPS);
 
     await booper.unboop(amount);
     expect(await booper.totalRevenue()).to.equal(revenue.add(1));
@@ -451,17 +452,17 @@ describe("Booper stored address management", function() {
       await booper.addr1.changeTradeFeeBPS(100);
       success = false;
     } catch (error) {}
-    expect(await booper.feeBPS()).to.equal(BigNumber.from(10));
+    expect(await booper.feeBPS()).to.equal(feeBPS);
     expect(success).to.equal(true);
   });
 
   it("Should fail on invalid value - changeTradeFeeBPS", async function() {
     let success = true;    
     try {
-      await booper.changeTradeFeeBPS(BigNumber.from(1000));
+      await booper.changeTradeFeeBPS(ONE_HUNDRED_PERCENT_IN_BPS);
       success = false;
     } catch (error) {}
-    expect(await booper.feeBPS()).to.equal(BigNumber.from(10));
+    expect(await booper.feeBPS()).to.equal(feeBPS);
     expect(success).to.equal(true);
   });
 
@@ -483,7 +484,7 @@ describe("Booper stored address management", function() {
   it("Should fail on invalid value - changeDaoFeeBPS", async function() {
     let success = true;    
     try {
-      await booper.changeDaoFeeBPS(BigNumber.from(1000));
+      await booper.changeDaoFeeBPS(ONE_HUNDRED_PERCENT_IN_BPS);
       success = false;
     } catch (error) {}
     expect(await booper.daoFeeBPS()).to.equal(daoFeeBPS);
